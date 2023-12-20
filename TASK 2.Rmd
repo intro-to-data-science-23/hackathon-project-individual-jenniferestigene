@@ -1,0 +1,159 @@
+---
+title: "TASK 2"
+author: Jennifer Estigene
+Github: jenniferestigene
+output: html_document
+date: "2023-12-18"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Loading libraries 
+library(tidyverse)
+library(dplyr)
+library(htmltools)
+library(sf)
+library(ggplot2)
+library(lubridate)
+library(RColorBrewer)
+library(sjlabelled)
+library(haven)
+library(usmap)
+library(plotly)
+library(maps)
+```
+
+```{r}
+setwd("~/Desktop/R - MDS/Intro to DS Class/IDS Hackathon - Jennifer")
+```
+
+
+Step 1: Creating data frame extracting individual's most used domain in the USA
+```{r}
+# Processing the respondent's personid with their corresponding state number. 
+cyberspace_survey <- meof_usa_survey_df %>%
+  group_by(personid, inputstate) %>%
+  summarise(total_responses = n()) %>%
+  drop_na() %>%
+  select(personid, inputstate)
+
+# Processing the respondent's personid along with their most searched domain with the corresponding hours spent. 
+cyberspace_web <- meof_usa_web_df %>%
+  group_by(personid, domain) %>%
+  summarise(total_duration_hours = sum(duration, na.rm = TRUE) / 60) %>%
+  slice_max(order_by = total_duration_hours) %>%
+  ungroup() %>%
+  mutate(total_duration_hours = round(total_duration_hours, 2)) %>%
+  select(personid, domain, total_duration_hours)
+
+# Joining both data sets to create one cyberspace data set with the respondent's personid, corresponding state of residence, most searched domain with the hours spent on that domain. 
+cyberspace_df <- left_join(cyberspace_survey, cyberspace_web, by = "personid") %>%
+  drop_na()
+
+# Result
+cyberspace_df
+```
+
+Step 2: Extracting individual's facebook usage per each US state
+```{r}
+# Replace your "target_domain" and your "target_inputstate" with the specific values you want to extract
+target_domain <- "facebook.com"
+
+# Web behavior data
+web_data <- meof_usa_web_df %>%
+  filter(domain == target_domain) %>%
+  group_by(personid, domain) %>%
+  summarise(duration_hours = sum(duration, na.rm = TRUE) / 60) %>%
+  mutate(duration_hours = round(duration_hours, 2)) %>%
+  ungroup()
+
+# Survey data
+survey_data <- meof_usa_survey_df %>%
+  distinct(personid, inputstate) %>%
+  group_by(personid, inputstate) %>%
+  drop_na()
+
+# Combine data from both data frames
+state_web_behaviour <- left_join(web_data, survey_data, by = "personid") %>%
+  mutate(domain = target_domain) %>%
+  select(personid, domain, inputstate, duration_hours)
+
+# Result
+print(state_web_behaviour)
+```
+
+Step 3: Extracting individuals using Facebook per a specific state in the USA
+```{r}
+# Replace "target_inputstate" with the specific inputstate number you want to extract
+target_inputstate <- 19
+
+# Extract data for the specific inputstate number
+inputstate_data <- state_web_behaviour %>%
+ filter(inputstate == target_inputstate) %>%
+ select(personid, domain, inputstate, duration_hours)
+
+# Result
+print(inputstate_data)
+```
+
+
+Step 4: Extracting a specific US state with its total duration of Facebook usage
+```{r}
+# Replace "target_inputstate" with the specific inputstate number you want to extract
+target_inputstate <- 1
+target_domain <- "facebook.com"
+
+# Extract the specific state data
+specific_state_data <- state_web_behaviour %>%
+ filter(inputstate == target_inputstate)
+
+# Calculate the total usage of Facebook for the specific state
+total_facebook_usage <- specific_state_data %>%
+  summarise(duration_hours = sum(duration_hours)) %>%
+  mutate(inputstate = target_inputstate, domain = target_domain) %>%
+  select(inputstate, domain, duration_hours)
+
+# Display the result
+print(total_facebook_usage)
+```
+
+Step 4: Table of US states with its respective Facebook usage in hours
+```{r}
+# US data
+state_data <- data.frame(
+  state = c("alabama", "alaska", "arizona", "arkansas", "california", "colorado", "connecticut", "delaware", "district of columbia", "florida", "georgia", "hawaii", "idaho", "illinois", "indiana", "iowa", "kansas", "kentucky", "louisiana", "maine", "maryland", "massachusetts", "michigan", "minnesota", "mississippi", "missouri", "montana", "nebraska", "nevada", "new hampshire", "new jersey", "new mexico", "new york", "north carolina", "north dakota", "ohio", "oklahoma", "oregon", "pennsylvania", "rhode island", "south carolina", "south dakota", "tennessee", "texas", "utah", "vermont", "virginia", "washington", "west virginia", "wisconsin", "wyoming"),
+  hours = c(8110.15, 955.6, 22573.88, 2507.78, 44940.78, 26327.95, 3719.75, 5447.5, 1144.94, 41107.5, 8798.74, 1772.93, 2674.61, 31586.62, 15996.3, 9418.22, 11884.21, 4228.19, 15068.38, 8201.83, 7103.45, 4964.33, 13898.97, 12699.23, 2310.4, 9850.44, 1779.87, 5698.27, 8631.95, 623.02, 7671.08, 3951.81, 25576.72, 19914.63, 1.9, 33101.56, 246.09, 26369.21, 20238.45, 432.43, 10462.86, 5616.59, 11567.21, 47705.64, 8776.02, 4323.36, 7655.2, 11563.56, 7985.87, 17705.55, 667.13)
+)
+
+# Result
+print(state_data)
+```
+
+
+Step 6: US map of Facebook usage state-wise 
+```{r}
+# US data
+state_data <- data.frame(
+  state = c("alabama", "alaska", "arizona", "arkansas", "california", "colorado", "connecticut", "delaware", "district of columbia", "florida", "georgia", "hawaii", "idaho", "illinois", "indiana", "iowa", "kansas", "kentucky", "louisiana", "maine", "maryland", "massachusetts", "michigan", "minnesota", "mississippi", "missouri", "montana", "nebraska", "nevada", "new hampshire", "new jersey", "new mexico", "new york", "north carolina", "north dakota", "ohio", "oklahoma", "oregon", "pennsylvania", "rhode island", "south carolina", "south dakota", "tennessee", "texas", "utah", "vermont", "virginia", "washington", "west virginia", "wisconsin", "wyoming"),
+  hours = c(8110.15, 955.6, 22573.88, 2507.78, 44940.78, 26327.95, 3719.75, 5447.5, 1144.94, 41107.5, 8798.74, 1772.93, 2674.61, 31586.62, 15996.3, 9418.22, 11884.21, 4228.19, 15068.38, 8201.83, 7103.45, 4964.33, 13898.97, 12699.23, 2310.4, 9850.44, 1779.87, 5698.27, 8631.95, 623.02, 7671.08, 3951.81, 25576.72, 19914.63, 1.9, 33101.56, 246.09, 26369.21, 20238.45, 432.43, 10462.86, 5616.59, 11567.21, 47705.64, 8776.02, 4323.36, 7655.2, 11563.56, 7985.87, 17705.55, 667.13)
+)
+
+# Convert state names to uppercase for consistency
+state_data$state <- tolower(state_data$state)
+
+# Plotly choropleth map
+usmap::plot_usmap(data = state_data, values = "hours", labels = TRUE) +
+  scale_fill_continuous(
+    name = "Hours",
+    low = "skyblue",
+    high = "blue",
+    label = scales::comma
+  ) +
+  theme(legend.position = "right") +
+  ggtitle("Facebook Usage by State (in Hours)")
+```
+
+
+
+
+
